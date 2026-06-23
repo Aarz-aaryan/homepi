@@ -11,7 +11,7 @@ import subprocess
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
-FB = "/dev/fb1"
+FB = "/dev/fb0"
 W, H = 320, 240
 
 try:

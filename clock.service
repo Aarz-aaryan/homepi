@@ -1,0 +1,12 @@
+[Unit]
+Description=TFT Clock Display
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/visionai/clock.py
+Restart=always
+User=root
+WorkingDirectory=/home/visionai
+
+[Install]
+WantedBy=multi-user.target
