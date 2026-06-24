@@ -144,7 +144,7 @@ def load_gif_frames(gif_path, target_w, target_h):
                 right = left + target_w
                 bottom = top + target_h
                 frame_covered = img_resized.crop((left, top, right, bottom))
-                frames.append(frame_covered)
+                frames.append(frame_covered.convert('RGB'))
                 durations.append(frame_dur)
                 i += 1
     except EOFError:
@@ -208,7 +208,7 @@ def start_preload(day_index, slot_index, gif_path):
 # ─── RIBBON SYSTEM ───────────────────────────────────────────────────────────
 RIBBON_H     = 24
 RIBBON_SPEED = 0.7
-REPEAT_GAP   = 50      # px of black between copies (clean news-ticker feel)
+REPEAT_GAP   = 80      # px of black between copies (clean news-ticker feel)
 TILE_W       = W * 4   # 1280px wide — generous buffer for wraparound
 
 # Cached ribbon state
@@ -349,9 +349,7 @@ with open(FB, "wb") as fb:
                     overlay = Image.new('RGBA', (W, H), (0, 0, 0, 0))
                     od = ImageDraw.Draw(overlay)
                     od.rectangle([x_t - 6, y_t - 4, x_t + tw + 6, y_t + th_px + 4], fill=(0, 0, 0, 155))
-                    img = img.convert('RGBA')
-                    img = Image.alpha_composite(img, overlay)
-                    img = img.convert('RGB')
+                    img.paste(overlay, (0, 0), overlay)
                     draw = ImageDraw.Draw(img)
                     draw.text((x_t, y_t), t_str, font=font, fill=(255, 255, 255))
 
