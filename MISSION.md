@@ -1,12 +1,12 @@
 # homepi
 
-**Mission:** TFT clock display for homepi (Raspberry Pi) — 2.8" Adafruit ILI9341 display showing time/date/weather + r-server status, auto-cycling every 10 seconds.
+**Mission:** TFT clock display for homepi (Raspberry Pi) — 2.8" Adafruit ILI9341 display with animated GIF background, scrolling status ribbon (day/date/weather/r-server dot), and r-server status window.
 
 ---
 
 ## Status: ✅ Running
 
-**Last rebuilt:** 2026-06-23 (fresh Raspbian 13 image after SD card failure)
+**Last updated:** 2026-06-23 (ribbon + GIF background)
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Component | Detail |
 |-----------|--------|
-| Device | Raspberry Pi (homepi) |
+| Device | Raspberry Pi 3B+ (homepi) |
 | Tailscale IP | `100.106.151.81` |
 | Display | Adafruit 2.8" TFT (ILI9341 controller) |
 | Resolution | 320×240 RGB565 |
@@ -27,14 +27,18 @@
 
 ## Display Layout
 
-**Window 1 — Clock (~5s)**
+**Window 0 — Clock with GIF Background (~10s)**
 ```
-   12:34:56        ← large white time
- Monday, June 22   ← grey date
- ☁ 22C 5km/h       ← blue weather
+[scrolling ribbon: r-svr ● MON JUN 23  |  sunny 22C 5km/h  • ]
+                    7:45 PM              ← large white time, semi-transparent box
+                 MON, JUN 23            ← grey date
+               sunny 22C 5km/h          ← blue weather
 ```
+- GIF animated background (cycles every 3h, deterministic per time slot)
+- Ribbon scrolls right-to-left at 0.7px/frame, continuous seamless loop
+- `r-svr` label in grey, green dot if all r-server monitors up, red if any down
 
-**Window 2 — r-server Status (~5s)**
+**Window 1 — r-server Status (~10s)**
 ```
  r-server Status
   6 UP  0 DOWN     ← green
@@ -45,8 +49,7 @@
  ● Homepage
  ● Glances
 ```
-
-Auto-cycles every 10 seconds (5s per window).
+Auto-cycles every 10 seconds.
 
 ---
 
@@ -55,6 +58,8 @@ Auto-cycles every 10 seconds (5s per window).
 ### Stack
 - **Raspberry Pi OS:** Raspbian 13 (Trixie), Linux 6.18.34, Python 3.13.5
 - **Rendering:** Pillow → raw RGB565 bytes → `/dev/fb0` (no X11, no pygame, no SDL)
+- **Background GIFs:** Pre-loaded from `/home/visionai/gifs/`, pre-resized to 320×240 RGBA, cycling every 3h via deterministic slot shuffle
+- **Ribbon:** Pre-built 1280px RGB tile (multiple content copies with 50px gaps), paste-crop onto frame each frame
 - **Weather:** Open-Meteo API (free, no auth)
 - **r-server status:** SSH to r-server@100.84.224.18 → `docker exec uptime-kuma sqlite3`
 - **Service:** systemd `clock.service`, runs as **root**
@@ -64,9 +69,31 @@ Auto-cycles every 10 seconds (5s per window).
 
 | File | Location | Purpose |
 |------|----------|---------|
-| `clock.py` | `/home/visionai/clock.py` on homepi | Main display script (166 lines) |
+| `clock.py` | `/home/visionai/clock.py` on homepi | Main display script (443 lines) |
 | `clock.service` | `/etc/systemd/system/clock.service` | systemd unit |
+| `gifs/` | `/home/visionai/gifs/` | 13 valid GIFs (downloaded from Wall-E-Desk repo) |
 | `config.txt` | `/boot/firmware/config.txt` | Device tree overlays |
+
+---
+
+## GIF Background
+
+GIFs sourced from [JoshuaThadi/Wall-E-Desk](https://github.com/JoshuaThadi/Wall-E-Desk/tree/main/Pixel-Art) (58 files, 13 valid GIFs under 500KB).
+
+**Slot system:** 8 slots × 3h = 24h coverage. Deterministic shuffle per day (`year*365 + day_of_year` as seed), so the same GIF plays at the same slot every day.
+
+**Preloading:** Next slot's GIF preloaded in background thread while current plays. Zero gap on transitions.
+
+---
+
+## Scrolling Ribbon
+
+- **Height:** 24px strip at top of display
+- **Content per unit:** `[r-svr] [●] [MON JUN 23] [ | ] [sunny 22C 5km/h] [ • ]`
+- **Spacing:** 50px black gap between content units (clean news-ticker feel)
+- **Speed:** 0.7 px/frame (~1.2s per character at 12px font)
+- **Cache:** Ribbon tile rebuilt only when content changes (weather refresh, day rollover, r-server status change)
+- **Dot color:** Green (0,220,80) if all r-server monitors up; Red (255,60,60) if any down
 
 ---
 
@@ -120,7 +147,7 @@ Both touch variants were tested and **neither works**:
 # 1. SSH in
 ssh homepi@100.106.151.81
 
-# 2. Install sshpass (sudo without TTY workaround)
+# 2. Install sshpass
 sudo apt-get install -y sshpass
 
 # 3. Enable SPI + TFT overlay
@@ -145,12 +172,14 @@ ssh homepi@100.106.151.81 sudo systemctl daemon-reload
 ssh homepi@100.106.151.81 sudo systemctl enable clock
 ssh homepi@100.106.151.81 sudo systemctl start clock
 
-# 7. Set up passwordless SSH to r-server
-# Generate key on homepi:
+# 7. Set up GIFs directory
+ssh homepi@100.106.151.81 'mkdir -p /home/visionai/gifs'
+# Download GIFs via agy or manually from:
+# https://github.com/JoshuaThadi/Wall-E-Desk/tree/main/Pixel-Art
+
+# 8. Set up passwordless SSH to r-server
 ssh homepi@100.106.151.81 ssh-keygen -f ~/.ssh/id_ed25519 -t ed25519 -N "" -C "homepi@100.106.151.81"
-# Add the pubkey to r-server:
-ssh r-server@100.84.224.18 "echo '<pubkey>' >> ~/.ssh/authorized_keys"
-ssh r-server@100.84.224.18 "sudo bash -c \"echo '<pubkey>' >> /root/.ssh/authorized_keys\""
+ssh homepi@100.106.151.81 'cat ~/.ssh/id_ed25519.pub'  # add to r-server
 ```
 
 ---
@@ -159,13 +188,16 @@ ssh r-server@100.84.224.18 "sudo bash -c \"echo '<pubkey>' >> /root/.ssh/authori
 
 ```bash
 # Restart
-sshpass -p 'aarz1947' ssh -o StrictHostKeyChecking=no homepi@100.106.151.81 'sudo systemctl restart clock'
+sshpass -p 'aarz1947' ssh -o StrictHostKeyChecking=no homepi@100.106.151.81 \
+  'sshpass -p "aarz1947" sudo systemctl restart clock'
 
 # Check status
-sshpass -p 'aarz1947' ssh -o StrictHostKeyChecking=no homepi@100.106.151.81 'systemctl status clock --no-pager -n 5'
+sshpass -p 'aarz1947' ssh -o StrictHostKeyChecking=no homepi@100.106.151.81 \
+  'systemctl status clock --no-pager -n 5'
 
 # View logs
-sshpass -p 'aarz1947' ssh -o StrictHostKeyChecking=no homepi@100.106.151.81 'journalctl -u clock --no-pager -n 20'
+sshpass -p 'aarz1947' ssh -o StrictHostKeyChecking=no homepi@100.106.151.81 \
+  'journalctl -u clock --no-pager -n 20'
 ```
 
 ---
@@ -182,9 +214,8 @@ No API key required.
 
 ### r-server Uptime Kuma (via SSH)
 ```bash
-ssh r-server@100.84.224.18 \
-  "sudo docker exec uptime-kuma sqlite3 /app/data/kuma.db \
-    'SELECT name,active FROM monitor;'"
+sshpass -p 'aarz1947' ssh -o StrictHostKeyChecking=no r-server@100.84.224.18 \
+  "sudo docker exec uptime-kuma sqlite3 /app/data/kuma.db 'SELECT name,active FROM monitor;'"
 ```
 Returns pipe-delimited rows: `Immich|1`, `Vaultwarden|1`, etc.
 
@@ -198,9 +229,6 @@ Returns pipe-delimited rows: `Immich|1`, `Vaultwarden|1`, etc.
 | homepi sudo | `aarz1947` |
 | r-server SSH | `aarz1947` |
 
-**Passwordless SSH:**
-- `homepi → r-server`: SSH key in `~/.ssh/id_ed25519.pub` added to `r-server@100.84.224.18:~/.ssh/authorized_keys` and `/root/.ssh/authorized_keys`
-
 ---
 
 ## Issues & Blockers
@@ -208,7 +236,8 @@ Returns pipe-delimited rows: `Immich|1`, `Vaultwarden|1`, etc.
 | Issue | Status |
 |-------|--------|
 | Touch non-functional | **Won't fix** — confirmed both capacitive (FT driver) and resistive (chip ID 0x0) are broken |
-| sudo requires TTY from SSH | **Resolved** — `sshpass` installed on new homepi for all sudo operations |
+| sudo requires TTY from SSH | **Resolved** — `sshpass` installed on homepi for all sudo operations |
+| Some .gif files are actually WebP | **Resolved** — validation filters to real GIFs, 13 valid files used |
 
 ---
 
@@ -216,17 +245,21 @@ Returns pipe-delimited rows: `Immich|1`, `Vaultwarden|1`, etc.
 
 - [x] Fresh Raspbian 13 installed, Tailscale configured
 - [x] SPI enabled + `pitft28-capacitive` overlay loaded (display works)
-- [x] All dependencies pre-installed (Pillow 11.1, requests, DejaVu fonts, Python 3.13)
 - [x] 2-window display (clock + r-server status, 10s auto-cycle)
-- [x] systemd service running (PID 2160, clean journal)
+- [x] systemd service running (PID 7265, stable ~35% CPU)
 - [x] Passwordless SSH homepi → r-server
 - [x] Open-Meteo weather API verified (21.5°C, 6.2km/h)
 - [x] r-server status verified (6 UP / 0 DOWN)
-- [x] MISSION.md updated with new IP and fresh rebuild steps
+- [x] **NEW:** Animated GIF background (window 0 only, 13 valid GIFs, 3h slot cycling)
+- [x] **NEW:** Scrolling ribbon with r-server status dot (green/red), day/date/weather
+- [x] **NEW:** Seamless ribbon loop with tile caching (no per-frame rebuild)
+- [x] **NEW:** GIF preloading (next slot pre-loaded while current plays)
+- [x] MISSION.md updated
 
 ## What's Left
 
-- [ ] (Nothing critical — display is fully operational)
+- [ ] Tune ribbon scroll speed (currently 0.7px/frame)
+- [ ] GIF quality: some GIFs have visible artefacts (WebP source files)
 
 ---
 
@@ -235,7 +268,8 @@ Returns pipe-delimited rows: `Immich|1`, `Vaultwarden|1`, etc.
 | Date | Session Summary |
 |------|----------------|
 | 2026-06-22 | Initial build on previous SD card. Touch attempted (both resistive + capacitive overlays tried, both failed). 2-window auto-cycle running. |
-| 2026-06-23 | SD card failed. Fresh Raspbian 13 image. Full rebuild from scratch on new homepi IP (100.106.151.81). Everything working again. |
+| 2026-06-23 AM | SD card failed. Fresh Raspbian 13 image. Full rebuild from scratch on new homepi IP (100.106.151.81). Everything working again. |
+| 2026-06-23 PM | Added animated GIF background to window 0. Downloaded 58 files from Wall-E-Desk repo, filtered to 13 valid GIFs. Implemented 3h deterministic GIF slot cycling with background preloading. Added scrolling ribbon at top (day/date/weather/r-server dot) with tile caching. |
 
 ---
 
@@ -248,8 +282,8 @@ After any future reimage/rebuild, check this list:
 - [ ] Reboot
 - [ ] `/dev/fb0` exists (TFT framebuffer)
 - [ ] `/home/visionai/` exists and owned by `homepi:homepi`
-- [ ] `clock.py` deployed to `/home/visionai/`
+- [ ] `clock.py` + `gifs/` deployed to `/home/visionai/`
 - [ ] `clock.service` installed and enabled
 - [ ] SSH key generated on homepi, added to r-server
 - [ ] `systemctl start clock` → check `journalctl -u clock` for errors
-- [ ] Display shows Window 1 (time/weather) then flips to Window 2 (r-server) after ~10s
+- [ ] Display shows Window 0 (time/weather/GIF) then flips to Window 1 (r-server) after ~10s
