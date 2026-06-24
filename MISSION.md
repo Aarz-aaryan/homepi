@@ -49,7 +49,7 @@
  ● Homepage
  ● Glances
 ```
-Auto-cycles every 10 seconds.
+Auto-cycles every 20 seconds (time) / 8 seconds (r-server).
 
 ---
 
