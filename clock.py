@@ -155,41 +155,7 @@ def load_gif_frames(gif_path, target_w, target_h):
 
 all_gifs_raw = sorted(glob.glob("/home/visionai/gifs/*.gif") + glob.glob("/home/visionai/gifs/*.webp"))
 
-def get_valid_gifs(gif_paths):
-    code = f"""
-import sys, json
-from PIL import Image
-paths = {repr(gif_paths)}
-valid = []
-for p in paths:
-    try:
-        with Image.open(p) as im:
-            im.verify()
-        valid.append(p)
-    except Exception:
-        pass
-print(json.dumps(valid))
-"""
-    try:
-        res = subprocess.run(["python3", "-c", code], timeout=5, capture_output=True, text=True)
-        if res.returncode == 0:
-            return json.loads(res.stdout)
-    except Exception:
-        pass
-    valid = []
-    for p in gif_paths:
-        try:
-            res = subprocess.run(
-                ["python3", "-c", f"from PIL import Image; Image.open({repr(p)}).verify()"],
-                timeout=1, capture_output=True
-            )
-            if res.returncode == 0:
-                valid.append(p)
-        except Exception:
-            pass
-    return valid
-
-all_gifs = get_valid_gifs(all_gifs_raw)
+all_gifs = all_gifs_raw
 print(f"[GIF] {len(all_gifs)} valid GIFs")
 
 def get_slot_info(dt):
@@ -358,7 +324,7 @@ with open(FB, "wb") as fb:
                     if n_path:
                         start_preload(n_day_index, n_slot_index, n_path)
 
-            while time.time() - window_start < 10.0:
+            while time.time() - window_start < 20.0:
                 loop_start = time.time()
                 now = datetime.now()
                 day_index, slot_index = get_slot_info(now)
@@ -439,5 +405,5 @@ with open(FB, "wb") as fb:
                     break
             fb.seek(0)
             fb.write(image_to_fb(img))
-            time.sleep(10)
+            time.sleep(8)
         window = 1 - window
