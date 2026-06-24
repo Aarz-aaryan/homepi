@@ -71,14 +71,14 @@ Auto-cycles every 20 seconds (time) / 8 seconds (r-server).
 |------|----------|---------|
 | `clock.py` | `/home/visionai/clock.py` on homepi | Main display script (443 lines) |
 | `clock.service` | `/etc/systemd/system/clock.service` | systemd unit |
-| `gifs/` | `/home/visionai/gifs/` | 13 valid GIFs (downloaded from Wall-E-Desk repo) |
+| `gifs/` | `/home/visionai/gifs/` | all 58 GIFs (downloaded from Wall-E-Desk repo) |
 | `config.txt` | `/boot/firmware/config.txt` | Device tree overlays |
 
 ---
 
 ## GIF Background
 
-GIFs sourced from [JoshuaThadi/Wall-E-Desk](https://github.com/JoshuaThadi/Wall-E-Desk/tree/main/Pixel-Art) (58 files, 13 valid GIFs under 500KB).
+GIFs sourced from [JoshuaThadi/Wall-E-Desk](https://github.com/JoshuaThadi/Wall-E-Desk/tree/main/Pixel-Art) (58 files, all 58 GIFs from JoshuaThadi/Wall-E-Desk).
 
 **Slot system:** 8 slots × 3h = 24h coverage. Deterministic shuffle per day (`year*365 + day_of_year` as seed), so the same GIF plays at the same slot every day.
 
@@ -250,7 +250,7 @@ Returns pipe-delimited rows: `Immich|1`, `Vaultwarden|1`, etc.
 - [x] Passwordless SSH homepi → r-server
 - [x] Open-Meteo weather API verified (21.5°C, 6.2km/h)
 - [x] r-server status verified (6 UP / 0 DOWN)
-- [x] **NEW:** Animated GIF background (window 0 only, 13 valid GIFs, 3h slot cycling)
+- [x] **NEW:** Animated GIF background (window 0 only, all 58 GIFs, 3h slot cycling)
 - [x] **NEW:** Scrolling ribbon with r-server status dot (green/red), day/date/weather
 - [x] **NEW:** Seamless ribbon loop with tile caching (no per-frame rebuild)
 - [x] **NEW:** GIF preloading (next slot pre-loaded while current plays)
@@ -269,7 +269,7 @@ Returns pipe-delimited rows: `Immich|1`, `Vaultwarden|1`, etc.
 |------|----------------|
 | 2026-06-22 | Initial build on previous SD card. Touch attempted (both resistive + capacitive overlays tried, both failed). 2-window auto-cycle running. |
 | 2026-06-23 AM | SD card failed. Fresh Raspbian 13 image. Full rebuild from scratch on new homepi IP (100.106.151.81). Everything working again. |
-| 2026-06-23 PM | Added animated GIF background to window 0. Downloaded 58 files from Wall-E-Desk repo, filtered to 13 valid GIFs. Implemented 3h deterministic GIF slot cycling with background preloading. Added scrolling ribbon at top (day/date/weather/r-server dot) with tile caching. |
+| 2026-06-23 PM | Added animated GIF background to window 0. Downloaded 58 files from Wall-E-Desk repo, filtered to all 58 GIFs. Implemented 3h deterministic GIF slot cycling with background preloading. Added scrolling ribbon at top (day/date/weather/r-server dot) with tile caching. |
 
 ---
 
