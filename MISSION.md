@@ -1,4 +1,6 @@
-# homepi
+# homepi — historical TFT mission notes
+
+> This document's status and measurements are historical. See [README.md](README.md) for the 2026-11-15 cross-device role map and explicit verification gaps. Current physical display health was not rechecked in that update.
 
 **Mission:** TFT clock display for homepi (Raspberry Pi) — 2.8" Adafruit ILI9341 display with animated GIF background, scrolling status ribbon (day/date/weather/r-server dot), and r-server status window.
 
