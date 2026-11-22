@@ -18,6 +18,17 @@ class SecurityConfigTests(unittest.TestCase):
         self.assertIn('StrictHostKeyChecking=yes', command)
         self.assertNotIn('sshpass', command)
 
+    def test_preserves_existing_animation_and_ribbon_progress(self):
+        source = Path(__file__).with_name('clock.py').read_text()
+        tree = ast.parse(source)
+        functions = {node.name for node in tree.body if isinstance(node, ast.FunctionDef)}
+        self.assertTrue({'draw_ribbon', '_build_ribbon_tile'}.issubset(functions))
+        self.assertNotIn('get_valid_gifs', functions)  # Historical verify() rejected valid GIFs.
+        self.assertIn('all_gifs = all_gifs_raw', source)
+        self.assertIn("frames.append(frame_covered.convert('RGB'))", source)
+        self.assertIn('while time.time() - window_start < 20.0:', source)
+        self.assertIn('time.sleep(8)', source)
+
     @patch('restart_clock.subprocess.run')
     def test_restart_is_noninteractive_and_bounded(self, run):
         run.return_value = subprocess.CompletedProcess([], 0, stdout='active', stderr='')
