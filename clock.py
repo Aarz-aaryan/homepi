@@ -40,9 +40,9 @@ rs_summary   = "Loading..."
 rs_monitors  = []
 rs_error     = False
 
+# Provision the service user's SSH key and verified known_hosts before deployment.
 RS_CMD = [
-    "sshpass", "-p", "aarz1947",
-    "ssh", "-o", "StrictHostKeyChecking=no",
+    "ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
     "-o", "ConnectTimeout=8",
     "r-server@100.84.224.18",
     "sudo docker exec uptime-kuma sqlite3 /app/data/kuma.db \"SELECT name,active FROM monitor;\""

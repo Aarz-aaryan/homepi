@@ -1,23 +1,22 @@
-import subprocess, pty, os, time
+#!/usr/bin/env python3
+"""Restart the remote clock using pre-provisioned SSH keys and narrow sudo rights."""
+import os
+import re
+import subprocess
 
-pid, fd = pty.fork()
-if pid == 0:
-    # child: exec into SSH with sudo
-    os.execvp('sshpass', [
-        'sshpass', '-p', '000000', 'ssh',
-        '-o', 'StrictHostKeyChecking=no',
-        '-o', 'ServerAliveInterval=10',
-        '-tt', 'homepi@homepi',
-        'sudo', 'systemctl', 'restart', 'clock'
-    ])
-    os._exit(1)
 
-# parent: write password after delay
-time.sleep(1.5)
-os.write(fd, b'000000\n')
-time.sleep(3)
+def restart(target=None):
+    target = target or os.environ.get('HOMEPI_SSH_TARGET', 'homepi@homepi')
+    if not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.@-]*', target):
+        raise ValueError('Invalid SSH target')
+    result = subprocess.run(
+        ['ssh', '-T', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
+         '-o', 'ConnectTimeout=8', target,
+         'sudo -n systemctl restart clock && systemctl status clock --no-pager -n 3'],
+        capture_output=True, text=True, timeout=30, check=True,
+    )
+    return result.stdout
 
-p = subprocess.run(['sshpass', '-p', '000000', 'ssh', '-o', 'StrictHostKeyChecking=no', 'homepi@homepi',
-    'sleep 2 && systemctl status clock --no-pager -n 3'],
-    stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-print(p.stdout.decode()[-500:])
+
+if __name__ == '__main__':
+    print(restart())
